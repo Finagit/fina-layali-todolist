@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() {
   runApp(const TodoListApp());
@@ -9,17 +10,28 @@ class TodoListApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Todo List',
-      theme: ThemeData(
-        primarySwatch: Colors.blueGrey, // Menggunakan warna abu
-      ),
-      home: const TodoHomePage(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: _themeModeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Todo List',
+          theme: ThemeData(
+            brightness: Brightness.light,
+            primarySwatch: Colors.blueGrey,
+            scaffoldBackgroundColor: Colors.pink.shade50,
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.blueGrey,
+          ),
+          themeMode: mode,
+          home: const TodoHomePage(),
+        );
+      },
     );
   }
 }
-
 class TodoHomePage extends StatefulWidget {
   const TodoHomePage({super.key});
 
@@ -52,10 +64,26 @@ class _TodoHomePageState extends State<TodoHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.grey[800], // Warna abu tua untuk AppBar
-        title: const Text('Rutinitas harian'),
+        
+       title: const Text('Rutinitas harian'),
+        actions: [
+          Row(
+            children: [
+              const Icon(Icons.dark_mode),
+              Switch(
+                value: _themeModeNotifier.value == ThemeMode.dark,
+                onChanged: (val) {
+                  _themeModeNotifier.value =
+                      val ? ThemeMode.dark : ThemeMode.light;
+                },
+              ),
+            ],
+          ),
+        ],
       ),
       body: Container(
         color: Colors.pink.shade50, // Background abu muda
