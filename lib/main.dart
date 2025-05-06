@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier(ThemeMode.light);
 
+
 void main() {
   runApp(const TodoListApp());
 }
@@ -21,6 +22,7 @@ class TodoListApp extends StatelessWidget {
             primarySwatch: Colors.blueGrey,
             scaffoldBackgroundColor: Colors.pink.shade50,
           ),
+        
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             primarySwatch: Colors.blueGrey,
@@ -40,20 +42,63 @@ class TodoHomePage extends StatefulWidget {
 }
 
 class _TodoHomePageState extends State<TodoHomePage> {
-  final List<Map<String, String>> _todos = []; // Daftar tugas dengan deskripsi
-  final TextEditingController _titleController = TextEditingController(); // Untuk input judul tugas
-  final TextEditingController _descriptionController = TextEditingController(); // Untuk input deskripsi
+    final List<Map<String, dynamic>> _todos = [];
+    final TextEditingController _titleController = TextEditingController();
+    final TextEditingController _descriptionController = TextEditingController();
+
+    String _filter = 'Semua';
 
   void _addTodo() {
     final title = _titleController.text;
     final description = _descriptionController.text;
     if (title.isNotEmpty && description.isNotEmpty) {
       setState(() {
-        _todos.add({'title': title, 'description': description});
+        _todos.add({
+          'title': title,
+          'description': description,
+          'isDone': false,
+        });
         _titleController.clear();
         _descriptionController.clear();
       });
     }
+  }
+
+  void _editTodo(int index) {
+    _titleController.text = _todos[index]['title'];
+    _descriptionController.text = _todos[index]['description'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Tugas'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Hari dan tgl')),
+            TextField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Catatan')),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _todos[index]['title'] = _titleController.text;
+                _todos[index]['description'] = _descriptionController.text;
+                _titleController.clear();
+                _descriptionController.clear();
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Simpan'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _removeTodo(int index) {
@@ -64,29 +109,34 @@ class _TodoHomePageState extends State<TodoHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final filteredTodos = _todos.where((todo) {
+     if (_filter == 'Selesai') return todo['isDone'] == true;
+     if (_filter == 'Belum Selesai') return todo['isDone'] == false;
+    return true;
+  }).toList();
+
 
     return Scaffold(
-      appBar: AppBar(
-        
+      appBar: AppBar( 
        title: const Text('Rutinitas harian'),
         actions: [
-          Row(
-            children: [
-              const Icon(Icons.dark_mode),
-              Switch(
-                value: _themeModeNotifier.value == ThemeMode.dark,
-                onChanged: (val) {
-                  _themeModeNotifier.value =
-                      val ? ThemeMode.dark : ThemeMode.light;
-                },
-              ),
+          DropdownButton<String>(
+            value: _filter,
+            onChanged: (val) => setState(() => _filter = val!),
+            items: const [
+              DropdownMenuItem(value: 'Semua', child: Text('Semua')),
+              DropdownMenuItem(value: 'Selesai', child: Text('Selesai')),
+              DropdownMenuItem(value: 'Belum Selesai', child: Text('Belum Selesai')),
             ],
+          ),
+          Switch(
+            value: _themeModeNotifier.value == ThemeMode.dark,
+            onChanged: (val) => _themeModeNotifier.value = val ? ThemeMode.dark : ThemeMode.light,
           ),
         ],
       ),
       body: Container(
-        color: Colors.pink.shade50, // Background abu muda
+        color:  Theme.of(context).scaffoldBackgroundColor, // Background abu muda
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -128,17 +178,28 @@ class _TodoHomePageState extends State<TodoHomePage> {
             const SizedBox(height: 16),
             Expanded(
               child: ListView.builder(
-                itemCount: _todos.length,
+                itemCount: filteredTodos.length,
                 itemBuilder: (context, index) {
+                  final todo = filteredTodos[index];
+                  final realIndex = _todos.indexOf(todo); // Untuk tindakan seperti edit/hapus
                   return Card(
-                    color: Colors.grey.shade200, // Warna abu muda untuk card
-                    margin: const EdgeInsets.only(bottom: 8),
+                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      title: Text(_todos[index]['title']!),
-                      subtitle: Text(_todos[index]['description']!),
+                      onLongPress: () => _editTodo(realIndex),
+                      leading: Checkbox(
+                        value: todo['isDone'],
+                        onChanged: (val) => setState(() => todo['isDone'] = val),
+                      ),
+                      title: Text(
+                        todo['title'],
+                        style: TextStyle(
+                          decoration: todo['isDone'] ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                      subtitle: Text(todo['description']),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete),
-                        onPressed: () => _removeTodo(index),
+                        onPressed: () => _removeTodo(realIndex),
                       ),
                     ),
                   );
